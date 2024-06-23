@@ -26,6 +26,16 @@ class InputLayer(NetworkLayer):
         self.test_label = test_label
         self.test_filename = test_filename
 
+    # Static method to log bad lines
+    @staticmethod
+    def log_bad_lines(line, line_number):
+        log_dir = os.path.dirname(os.path.abspath(__file__))
+        log_file_path = os.path.join(log_dir, "bad_lines.log")
+        with open(log_file_path, "a") as log_file:                  # Open log file in append mode
+            log_file.write(f"Line {line_number}: {line}\n")         # Write bad line and its line number
+
+
+
 
 
     '''
@@ -94,18 +104,42 @@ class InputLayer(NetworkLayer):
         labels.close()
         
 
+    # Combined function to setup the dataset
+    def setup_data(self, dataset_type='train'):
+        if dataset_type == 'train':
+            filename = self.train_filename
+            data_file = self.train_data
+            label_file = self.train_label
+            data_size = 60000
+        else:
+            filename = self.test_filename
+            data_file = self.test_data
+            label_file = self.test_label
+            data_size = 10000
+
+        if not os.path.exists(filename):
+            InputLayer.convert(data_file, label_file, filename, data_size, 28)
+        
+        data_frame = pd.read_csv(filename, header=None, on_bad_lines=InputLayer.log_bad_lines if dataset_type == 'train' else 'skip', engine='python')
+        labels = torch.tensor(data_frame[0].values)
+        data_frame = torch.tensor(data_frame.drop(data_frame.columns[0], axis=1).values, dtype=torch.float)
+        data_frame /= 255
+        return TensorDataset(data_frame, labels)
 
 
 
+    # List of all methods from layers.NetworkLayer that are not needed for this layer
+    # TODO: find a better way to implement the logic of having an input processing layer that still extends the layer.NetworkLayer interface
+    def create_id_tensors(self): pass
+    def set_scheduler(self): pass
+    def visualize_weights(self, path, num, use): pass
+    def update_weights(self): pass
+    def update_bias(self): pass
+    def forward(self): pass
+    def active_weights(self): pass
+    def _train_forward(self, x, clamped_output): pass
+    def _eval_forward(self, x, clamped_output): pass
 
-
-
-
-
-
-
-
-    def setup_train_data(self):
 
 
 
