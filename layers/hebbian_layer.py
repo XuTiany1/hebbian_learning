@@ -411,6 +411,7 @@ class HebbianLayer(NetworkLayer):
 
 
 
+
     """
     Counts the number of active feature selectors (above a certain cutoff beta).
     @param
