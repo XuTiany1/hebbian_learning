@@ -249,36 +249,14 @@ class HebbianLayer(NetworkLayer):
             # and this function increases for values less than 1 (underused weights).
 
 
-    # STEP 4: 
-
-
- def weight_decay(self):
-        tanh = nn.Tanh()
-
-        # Step 1: Compute the average of exponential averages
-            # This calculates the mean of the exponential_average tensor, which tracks the exponential moving average of the outputs of the layer.
-            # .item() converts the result from a tensor to a Python scalar.
-        average = torch.mean(self.exponential_average).item()
-
-        # Step 2: Normalize the exponential_average tensor by dividing each element by the computed mean. 
-            # This gives a ratio indicating how each element compares to the average.
-        A = self.exponential_average / average
-
-        # Step 3: calculate the growth factors
-            # The difference between each ratio in A and 1 is scaled by eps, passed through the tanh function, and then scaled by eps again before adding 1. 
-                # This growth factor is used to adjust weights that are greater than zero.
-            # This is the reciprocal of growth_factor_positive and is used to adjust weights that are less than zero.
-        growth_factor_positive = self.eps * tanh(-self.eps * (A - 1)) + 1
-        growth_factor_negative = torch.reciprocal(growth_factor_positive)
-
-        # Update the weights depending on growth factor
+    # STEP 4: Update the weights depending on growth factor
         positive_weights = torch.where(self.fc.weight > 0, self.fc.weight, 0.0)
         negative_weights = torch.where(self.fc.weight < 0, self.fc.weight, 0.0)
         positive_weights = positive_weights * growth_factor_positive.unsqueeze(1)
         negative_weights = negative_weights * growth_factor_negative.unsqueeze(1)
         self.fc.weight = nn.Parameter(torch.add(positive_weights, negative_weights), requires_grad=False)
-        
-        # Check if there are any NaN weights
+    
+    # STEP 5: Check if there are any NaN weights
         if (self.fc.weight.isnan().any()):
             print("NAN WEIGHT")
 
@@ -301,10 +279,148 @@ class HebbianLayer(NetworkLayer):
 
 
 
+# -----------------------------------------------------------------------------------------------------------
+#  FORWARD PASS SECTION
+# -----------------------------------------------------------------------------------------------------------
+
+
+    '''
+    This function handles the forward pass during training for a neual network layer
+    '''
+    def _train_forward(self, x, clamped_output=None):
+
+    # STEP 1: Check if input x in a torch tensor
+        if not isinstance(x, torch.Tensor):
+            raise TypeError("Input X must be a torch.Tensor")
+        
+    # STEP 2: Copy input and move to device
+        input_copy = x.clone().to(self.device_id).float()
+        x = x.to(self.device_id)
+    
+    # STEP 3: Output calculation
+        x = self.fc(x)
+        # Here, I pass the input x through the fully connected (linear) layer (self.fc). 
+        # This computes the linear transformation of the input.
+
+
+#############################################################################################################
+#############################################################################################################
+    # STEP 4: Apply modern Hopfield Inhibition  THIS IS WHERE I ADJUST inhibition functions for different tests
+#############################################################################################################
+#############################################################################################################
+
+        x = self.modern_hopfield_inhibition(x)
+
+#############################################################################################################
+#############################################################################################################
+#############################################################################################################
+#############################################################################################################
+    
+
+    # STEP 5: Update weights
+        self.update_weights(input_copy, x)
+        # adjust the weights of the layer based on the input and the output after inhibition. 
+        # uses Sanger’s Rule to update the weights.
+
+    # STEP 6: Weight decay
+        self.weight_decay()
+            # Here, adjust the weights further by:
+                # decaying overused weights and 
+                # increasing underused weights
+
+        return x
 
 
 
 
+    '''
+    This function defines how the input data flows through the network during the evaluation or testing phase, 
+    without updating weights or applying weight decay.
+    '''
+    def _eval_forward(self, x):
+
+    # STEP 1: Move input to device
+        x = x.to(self.device_id)
+
+    # STEP 2: Calculate Output
+        x = self.fc(x)
+
+
+#############################################################################################################
+#############################################################################################################
+    # STEP 3: Apply modern Hopfield Inhibition  THIS IS WHERE I ADJUST inhibition functions for different tests
+#############################################################################################################
+#############################################################################################################
+
+        x = self.modern_hopfield_inhibition(x)
+
+#############################################################################################################
+#############################################################################################################
+#############################################################################################################
+#############################################################################################################
+    
+        return x
+
+
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------
+#  HELPER FUNCTION SECTION
+# -----------------------------------------------------------------------------------------------------------
+    """
+    Visualizes the weight/features learnt by neurons in this layer using their heatmap
+    @param
+    @return
+        ___ (void) = no returns
+    """
+    def visualize_weights(self, result_path, num, use):
+        # Find value for row and column
+        row = 0
+        col = 0
+
+        root = int(math.sqrt(self.output_dimension))
+        for i in range(root, 0, -1):
+            if self.output_dimension % i == 0:
+                row = min(i, self.output_dimension // i)
+                col = max(i, self.output_dimension // i)
+                break
+        
+        # Get the weights and create heatmap
+        weight = self.fc.weight
+        fig, axes = plt.subplots(row, col, figsize=(16, 16))
+        for ele in range(row*col):  
+            random_feature_selector = weight[ele]
+            # Move tensor to CPU, convert to NumPy array for visualization
+            heatmap = random_feature_selector.view(int(math.sqrt(self.fc.weight.size(1))),
+                                                int(math.sqrt(self.fc.weight.size(1)))).cpu().numpy()
+
+            ax = axes[ele // col, ele % col]
+            im = ax.imshow(heatmap, cmap='hot', interpolation='nearest')
+            fig.colorbar(im, ax=ax)
+            ax.set_title(f'Weight {ele}')
+            
+            # Move the tensor back to the GPU if needed
+            random_feature_selector = random_feature_selector.to(self.device_id)
+        
+        file_path = result_path + f'/hebbian/hebbianlayerweights-{num}-{use}.png'
+        plt.tight_layout()
+        plt.savefig(file_path)
+        plt.close()
+
+
+
+    """
+    Counts the number of active feature selectors (above a certain cutoff beta).
+    @param
+        beta (float) = cutoff value determining which neuron is active and which is not
+    @return
+        ___ (void) = no returns
+    """
+    # TODO: define how active_weights should be counted in the hebbian layer
+    def active_weights(self, beta):
+        pass
 
 
 
