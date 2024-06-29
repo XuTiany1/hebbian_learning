@@ -155,6 +155,11 @@ class HiddenLayer(NetworkLayer, ABC):
     # Different Weight Updates Methods
 
     # Here, I am just implementing different methods to update weights
+    # These methods don't automatically update the weights
+    # Rather, they are responsible for computing a component that will be useful for weight update in a hebbian method
+        # in hebbian update, delta_weight = learning_rate * calculated_rule * function_derivative
+        # Here, we are using the different learning rules to find the 'calculated_rule'
+        
     #################################################################################################
     def _hebbian_rule(self, 
                       input: torch.Tensor, 
