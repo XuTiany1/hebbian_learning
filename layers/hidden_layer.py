@@ -195,6 +195,15 @@ class HiddenLayer(NetworkLayer, ABC):
 
             So, in essence, Sanger rule extends traditional Hebbian learning by adding a correction term that enforces orthogonality among the weight vectors
 
+            
+            The function below does the following:
+                	•	Step 1: Copy input and output tensors for processing.
+                    •	Step 2: Calculate the outer product of the output and input vectors.
+                    •	Step 3: Retrieve and transpose the initial weights.
+                    •	Step 4: Calculate the correction term for each output neuron to ensure orthogonality.
+                    •	Step 5: Compute the final change in weights by subtracting the correction term from the outer product.
+                    •	Step 6: Update exponential averages if necessary.
+
         @param
             input: the input of the layer
             output: the output of the layer
@@ -207,16 +216,36 @@ class HiddenLayer(NetworkLayer, ABC):
         y: torch.Tensor = output.clone().detach().float().squeeze().to(self.device)
         y.requires_grad_(False)
         
-        # Calculate outer product of output and input
+        # Step 1: Calculate outer product of output and input
+        # O = y ⊗ x
         outer_prod: torch.Tensor = torch.tensor(outer(y.cpu().numpy(), x.cpu().numpy())).to(self.device)
+            # This results in a matrix where each element is the product of the corresponding elements of y and x.
 
-        # Retrieve initial weights (transposed) 
+        # Step 2: Retrieve initial weights (transposed) 
+        # W_init = W^T
         initial_weight: torch.Tensor = torch.transpose(self.fc.weight.clone().detach().to(self.device), 0, 1)
+            # This ensures that the weight update does not interfere with the original weights during computation.
 
-        # Calculate Sanger's Rule
+        # Step 3: Calculate Sanger's Rule
         A: torch.Tensor = torch.einsum('jk, lkm, m -> lj', initial_weight, self.id_tensor, y).to(self.device)
         A = A * (y.unsqueeze(1))
+        '''
+        Note, the above is sort of complex, but it basically does the same thing as the following:
+
+        # Note the FIRST I initialize the correction tensor
+        correction: torch.Tensor = torch.zeros_like(initial_weight)           # Here, I have a tensor correction is initialized with the same shape as initial_weight, filled with zeros.
+        for i in range(len(y)):
+            correction[:, i] = y[i] * (initial_weight[:, :i+1] @ y[:i+1])     # HERE, I loop through each element in the output vector y.
+                                                                              # Now, for each output neuron i, compute the correction term as follows:
+                                                                                        # •	initial_weight[:, :i+1] extracts the first i+1 columns of the weight matrix.
+                                                                                          •	y[:i+1] extracts the first i+1 elements of the output vector.
+                                                                                          •	The matrix-vector multiplication initial_weight[:, :i+1] @ y[:i+1] computes the sum of the products of the weights and corresponding outputs for the first i+1 neurons.
+                                                                                          •	The result is then scaled by y[i].
+        '''
         computed_rule: torch.Tensor = (outer_prod - A).to(self.device)
+            # The final weight update computed_rule is obtained by subtracting the correction term A from the outer product.
+            # This ensures that the weight update aligns with Sanger’s rule.
+            # The final weight update computed_rule is obtained by subtracting the correction term correction from the outer product outer_prod.
 
         # Update exponential averages
         self.exponential_average = torch.add(self.gamma * self.exponential_average, (1 - self.gamma) * y)
@@ -262,7 +291,18 @@ class HiddenLayer(NetworkLayer, ABC):
         computed_rule: torch.Tensor = (outer_prod - norm_term).to(self.device)
             # The final weight update computed_rule is obtained by subtracting norm_term from outer_prod. 
             # This ensures that the updated weights maintain orthogonality.
-            
+
+
+        """
+        Step 4 and 5 explained further:
+
+        In essense...
+            Step 4: Calculate the orthogonal projection adjustment (norm term) by computing the dot product of y and the initial weights, and then computing the outer product of y and this dot product result.
+            Step 5: Compute the final weight update by subtracting the norm term from the outer product of y and x.
+        
+        """
+
+
         # Update exponential averages if necessary
         self.exponential_average = torch.add(self.gamma * self.exponential_average, (1 - self.gamma) * y)
         
