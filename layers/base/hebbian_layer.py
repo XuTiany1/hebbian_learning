@@ -10,9 +10,24 @@ class HebbianLayer(HiddenLayer):
     """
     CLASS
     This class defines the functionality of the base hebbian layer
-    
+    @instance attr.
+        NetworkLayer ATTR.
+            input_dimension (int): number of inputs into the layer
+            output_dimension (int): number of outputs from layer
+            device (str): device that will be used for CUDA
+            lr (float): how fast model learns at each iteration
+            fc (nn.Linear): fully connected layer using linear transformation
+        HiddenLayer ATTR.
+            exponential_average (torch.Tensor): 0 tensor to keep track of exponential averages
+            gamma (float): decay factor -> factor to decay learning rate
+            lamb (float): lambda hyperparameter for lateral inhibition
+            eps (float): to avoid division by 0
+            id_tensor (torch.Tensor): id tensor of layer
+        OWN ATTR.
+            inhibition_rule (LateralInhibitions): which inhibition to be used
+            learning_rule (LearningRules): which learning rule to use
+            function_type (FunctionTypes): which function type should the weight updates follow
     """
-
     def __init__(self, 
                  input_dimension: int, 
                  output_dimension: int, 
