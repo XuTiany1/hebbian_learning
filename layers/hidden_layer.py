@@ -156,7 +156,10 @@ class HiddenLayer(NetworkLayer, ABC):
 
     # Here, I am just implementing different methods to update weights
     #################################################################################################
-    def _hebbian_rule(self, input: torch.Tensor, output: torch.Tensor) -> None:
+    def _hebbian_rule(self, 
+                      input: torch.Tensor, 
+                      output: torch.Tensor
+                      ) -> None:
         """
         METHOD
         Computes Hebbian Leanring Rule -> this is the vanilla hebbian learning rule
@@ -185,7 +188,10 @@ class HiddenLayer(NetworkLayer, ABC):
 
 
 
-    def _sanger_rule(self, input: torch.Tensor, output: torch.Tensor) -> torch.Tensor:
+    def _sanger_rule(self, 
+                     input: torch.Tensor, 
+                     output: torch.Tensor
+                     ) -> torch.Tensor:
         """
         METHOD
         Computes Sanger's Rule
@@ -254,7 +260,10 @@ class HiddenLayer(NetworkLayer, ABC):
 
 
 
-    def _fully_orthogonal_rule(self, input: torch.Tensor, output: torch.Tensor) -> None:
+    def _fully_orthogonal_rule(self, 
+                               input: torch.Tensor, 
+                               output: torch.Tensor
+                               ) -> None:
         """
         Update weights using Fully Orthogonal Rule.
         """
@@ -307,6 +316,128 @@ class HiddenLayer(NetworkLayer, ABC):
         self.exponential_average = torch.add(self.gamma * self.exponential_average, (1 - self.gamma) * y)
         
         return computed_rule
+
+
+
+
+
+    #################################################################################################
+    # Different function Types for Wegiht Updates
+    #################################################################################################
+    def _linear_function(self) -> float:
+        """
+        METHOD
+        Defines weight updates when using linear funciton
+        @param
+            None
+        @return
+            derivative: slope constant (derivative relative to linear rule always = 1)
+        """
+        return 1
+    
+    
+    def _sigmoid_function(self) -> torch.Tensor:
+        """
+        METHOD
+        Defines weight updates when using sigmoid funciton
+        @param
+            None
+        @return
+            derivative: sigmoid derivative of current weights
+        """
+        sigmoid: nn.Sigmoid = nn.Sigmoid()
+        current_weights: nn.Parameter = self.fc.weight.clone().detach().to(self.device)
+        sigmoid_weights: torch.Tensor = sigmoid(current_weights)
+        derivative: torch.Tensor = sigmoid_weights * (1 - sigmoid_weights)
+        return derivative
+
+
+
+
+
+
+
+
+    #################################################################################################
+    # Activations and weight/bias updates that will be called for train/eval forward
+    #################################################################################################
+    def inhibition(self, 
+                   input: torch.Tensor
+                   ) -> torch.Tensor:
+        """
+        This method is NOT IMPLEMENTED at the interface level as the specific inhibition is up to the specific layer
+
+        """
+        raise NotImplementedError("This method has yet to be implemented.")
+
+
+    def update_weights(self, 
+                       input: torch.Tensor, 
+                       output: torch.Tensor, 
+                       clamped_output: torch.Tensor = None
+                       ) -> None:
+        """
+        This method is NOT IMPLEMENTED at the interface level as the specific update weight function is up to the specific layer
+        """
+        raise NotImplementedError("This method has yet to be implemented.")
+    
+
+    def update_bias(self, 
+                    output: torch.Tensor
+                    ) -> None:
+        """
+        This method is NOT IMPLEMENTED at the interface level as the specific update bias function is up to the specific layer
+        """
+        raise NotImplementedError("This method has yet to be implemented.")
+
+
+    #################################################################################################
+    # Training/Evaluation during forward pass
+    #################################################################################################
+    def _train_forward(self, 
+                       input: torch.Tensor, 
+                       clamped_output: torch.Tensor = None
+                       ) -> torch.Tensor:
+        raise NotImplementedError("This method has yet to be implemented.")
+    
+
+    def _eval_forward(self, 
+                      input: torch.Tensor
+                      ) -> torch.Tensor:
+        raise NotImplementedError("This method has yet to be implemented.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
