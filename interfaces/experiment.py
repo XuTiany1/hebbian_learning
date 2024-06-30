@@ -128,6 +128,41 @@ class Experiment(ABC):
 
 
 
+    def _training(self, 
+                  train_data_loader: DataLoader, 
+                  epoch: int, 
+                  dname: str, 
+                  phase: ExperimentPhases, 
+                  visualize: bool = True
+                  ) -> None:
+        raise NotImplementedError("This method was not implemented.")
+    
+    
+    def _testing(self, 
+                 test_data_loader: DataLoader, 
+                 purpose: Purposes, 
+                 epoch: int, 
+                 dname: str, 
+                 phase: ExperimentPhases
+                 ) -> Tuple[float, ...]:
+        raise NotImplementedError("This method was not implemented.")
+    
+    
+    def run(self) -> Tuple[float, ...]:
+        raise NotImplementedError("This method was not implemented.")
+        
+    
+    def cleanup(self) -> None:
+        """
+        METHOD
+        Cleanup used ressources
+        @param
+            None
+        @return
+            None        
+        """
+        for logger in self.loggers:
+            close_logger(logger)
 
 
 
